@@ -1,0 +1,222 @@
+package drone;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class DroneNavigationSystem {
+
+    static int previousValidAltitude = 100;
+    static int consecutiveFailures = 0;
+    static String logFile = "log.txt";
+
+    public static void main(String[] args) {
+
+        Sensor sensorA = new Sensor("Sensor A");
+        Sensor sensorB = new Sensor("Sensor B");
+        Sensor sensorC = new Sensor("Sensor C");
+
+        System.out.println("Fault-Tolerant Autonomous Drone Navigation System");
+        System.out.println("------------------------------------------------");
+
+        try {
+            for (int cycle = 1; cycle <= 4; cycle++) {
+
+                System.out.println("\nCycle " + cycle);
+
+                Integer readingA = getSensorReading(sensorA);
+                Integer readingB = getSensorReading(sensorB);
+                Integer readingC = getSensorReading(sensorC);
+
+                System.out.println("Sensor A value: " + displayValue(readingA));
+                System.out.println("Sensor B value: " + displayValue(readingB));
+                System.out.println("Sensor C value: " + displayValue(readingC));
+
+                int validCount = countValidReadings(readingA, readingB, readingC);
+
+                if (validCount < 2) {
+                    consecutiveFailures++;
+
+                    System.out.println("Reliability status: FAILED");
+                    logEvent("Reliability failure - fewer than two valid sensor readings");
+
+                    if (consecutiveFailures >= 2) {
+                        throw new SystemReliabilityException("Two consecutive reliability failures occurred");
+                    }
+                } 
+                else {
+                    int finalAltitude = makeVotingDecision(readingA, readingB, readingC);
+
+                    previousValidAltitude = finalAltitude;
+                    consecutiveFailures = 0;
+
+                    System.out.println("Voting decision: " + finalAltitude + " meters");
+                    System.out.println("Reliability status: OK");
+
+                    logEvent("Voting decision completed. Final altitude: " + finalAltitude + " meters");
+                }
+            }
+
+        } catch (SystemReliabilityException e) {
+            System.out.println("\n" + e.getMessage());
+            System.out.println("SAFE MODE activated. Program stopped.");
+
+            logEvent("SAFE MODE activation - " + e.getMessage());
+        }
+    }
+
+    public static Integer getSensorReading(Sensor sensor) {
+        try {
+            int value = sensor.readSensor(previousValidAltitude);
+
+            if (value < 0 || value > 200) {
+                System.out.println(sensor.getSensorName() + " corrupted reading detected: " + value);
+                logEvent("Corrupted reading from " + sensor.getSensorName() + ": " + value);
+                return null;
+            }
+
+            return value;
+
+        } catch (SensorReadException e) {
+            System.out.println(e.getMessage());
+            logEvent("Sensor failure - " + e.getMessage());
+            return null;
+        }
+    }
+
+    public static int makeVotingDecision(Integer a, Integer b, Integer c) {
+
+        if (a != null && b != null && a.equals(b)) {
+            logEvent("Majority decision using Sensor A and Sensor B");
+            return a;
+        }
+
+        if (a != null && c != null && a.equals(c)) {
+            logEvent("Majority decision using Sensor A and Sensor C");
+            return a;
+        }
+
+        if (b != null && c != null && b.equals(c)) {
+            logEvent("Majority decision using Sensor B and Sensor C");
+            return b;
+        }
+
+        System.out.println("No majority found. Previous valid altitude used.");
+        logEvent("Fallback decision used previous valid altitude: " + previousValidAltitude);
+
+        return previousValidAltitude;
+    }
+
+    public static int countValidReadings(Integer a, Integer b, Integer c) {
+        int count = 0;
+
+        if (a != null) {
+            count++;
+        }
+
+        if (b != null) {
+            count++;
+        }
+
+        if (c != null) {
+            count++;
+        }
+
+        return count;
+    }
+
+    public static String displayValue(Integer value) {
+        if (value == null) {
+            return "Invalid";
+        }
+
+        return value + " meters";
+    }
+
+    public static void logEvent(String message) {
+        try {
+            FileWriter writer = new FileWriter(logFile, true);
+
+            DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String time = LocalDateTime.now().format(format);
+
+            writer.write(time + " - " + message + "\n");
+            writer.close();
+
+        } catch (IOException e) {
+            System.out.println("Could not write to log file.");
+        }
+    }
+}
+
+
+
+package drone;
+
+import java.util.Random;
+
+public class Sensor {
+
+    private String sensorName;
+    private Random random;
+
+    public Sensor(String sensorName) {
+        this.sensorName = sensorName;
+        this.random = new Random();
+    }
+
+    public int readSensor(int previousValue) throws SensorReadException {
+        int chance = random.nextInt(100);
+
+        if (chance <= 14) {
+            throw new SensorReadException(sensorName + " failed");
+        } 
+        else if (chance <= 29) {
+            return 201 + random.nextInt(100);
+        } 
+        else {
+            int change = random.nextInt(21) - 10;
+            int reading = previousValue + change;
+
+            if (reading < 0) {
+                reading = 0;
+            }
+
+            if (reading > 200) {
+                reading = 200;
+            }
+
+            return reading;
+        }
+    }
+
+    public String getSensorName() {
+        return sensorName;
+    }
+}
+
+
+
+package drone;
+
+import java.io.IOException;
+
+public class SensorReadException extends IOException {
+
+    public SensorReadException(String message) {
+        super(message);
+    }
+}
+
+
+package drone;
+
+public class SystemReliabilityException extends Exception {
+
+    public SystemReliabilityException(String message) {
+        super(message);
+    }
+}
+
+
