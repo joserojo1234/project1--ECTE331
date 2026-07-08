@@ -1,0 +1,172 @@
+
+
+
+public class SharedData {
+   int A1;
+   int A2;
+   int A3;
+   int B1;
+   int B2;
+   int B3;
+   boolean a1Done = false;
+   boolean b2Done = false;
+   boolean a2Done = false;
+   boolean b3Done = false;
+
+   public SharedData() {
+   }
+
+   public synchronized void funcA1() {
+      this.A1 = SumUtility.sumToN(500);
+      this.a1Done = true;
+      this.notifyAll();
+   }
+
+   public synchronized void funcB1() {
+      this.B1 = SumUtility.sumToN(250);
+   }
+
+   public synchronized void funcB2() {
+      while(!this.a1Done) {
+         this.waitForSignal();
+      }
+
+      this.B2 = this.A1 + SumUtility.sumToN(200);
+      this.b2Done = true;
+      this.notifyAll();
+   }
+
+   public synchronized void funcA2() {
+      while(!this.b2Done) {
+         this.waitForSignal();
+      }
+
+      this.A2 = this.B2 + SumUtility.sumToN(300);
+      this.a2Done = true;
+      this.notifyAll();
+   }
+
+   public synchronized void funcB3() {
+      while(!this.a2Done) {
+         this.waitForSignal();
+      }
+
+      this.B3 = this.A2 + SumUtility.sumToN(400);
+      this.b3Done = true;
+      this.notifyAll();
+   }
+
+   public synchronized void funcA3() {
+      while(!this.b3Done) {
+         this.waitForSignal();
+      }
+
+      this.A3 = this.B3 + SumUtility.sumToN(400);
+   }
+
+   private void waitForSignal() {
+      try {
+         this.wait();
+      } catch (InterruptedException var2) {
+         Thread.currentThread().interrupt();
+      }
+
+   }
+}
+
+public class SumUtility {
+   public SumUtility() {
+   }
+
+   public static int sumToN(int n) {
+      int total = 0;
+
+      for(int i = 0; i <= n; ++i) {
+         total += i;
+      }
+
+      return total;
+   }
+}
+
+
+
+public class ThreadAWorker extends Thread {
+   private SharedData data;
+
+   public ThreadAWorker(SharedData data) {
+      this.data = data;
+   }
+
+   public void run() {
+      this.data.funcA1();
+      this.data.funcA2();
+      this.data.funcA3();
+   }
+}
+
+
+public class ThreadBWorker extends Thread {
+   private SharedData data;
+
+   public ThreadBWorker(SharedData data) {
+      this.data = data;
+   }
+
+   public void run() {
+      this.data.funcB1();
+      this.data.funcB2();
+      this.data.funcB3();
+   }
+}
+
+
+public class ThreadSyncApp {
+
+    public static void main(String[] args) {
+
+        int testRuns = 1000;
+        boolean allCorrect = true;
+
+        for (int i = 1; i <= testRuns; i++) {
+
+            SharedData data = new SharedData();
+
+            ThreadAWorker threadA = new ThreadAWorker(data);
+            ThreadBWorker threadB = new ThreadBWorker(data);
+
+            threadA.start();
+            threadB.start();
+
+            try {
+                threadA.join();
+                threadB.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            if (data.A1 != 125250 || data.B1 != 31375 ||
+                data.B2 != 145350 || data.A2 != 190500 ||
+                data.B3 != 270700 || data.A3 != 350900) {
+
+                allCorrect = false;
+                System.out.println("Wrong result found in run " + i);
+                break;
+            }
+        }
+
+        if (allCorrect) {
+            System.out.println("All " + testRuns + " test runs completed successfully.");
+            System.out.println("Final correct values:");
+            System.out.println("A1 = 125250");
+            System.out.println("B1 = 31375");
+            System.out.println("B2 = 145350");
+            System.out.println("A2 = 190500");
+            System.out.println("B3 = 270700");
+            System.out.println("A3 = 350900");
+        }
+    }
+}
+
+
+
