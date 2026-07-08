@@ -1,0 +1,179 @@
+public class LoggerThread extends Thread {
+
+    private MotorController motor;
+
+    public LoggerThread(MotorController motor){
+        this.motor = motor;
+        setPriority(MIN_PRIORITY);
+    }
+
+    public void run(){
+
+        while(true){
+
+            motor.accessMotor("Logger");
+
+            try{
+                Thread.sleep(1000);
+            }catch(Exception e){}
+
+        }
+
+    }
+
+}
+public class Main {
+
+    public static void main(String[] args) {
+
+        MotorController motor = new MotorController();
+
+        LoggerThread logger = new LoggerThread(motor);
+        SafetyMonitor safety = new SafetyMonitor(motor);
+        MotionPlanner motion = new MotionPlanner(motor);
+
+        logger.start();
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        safety.start();
+        motion.start();
+    }
+}
+public class MotionPlanner extends Thread {
+
+    private MotorController motor;
+
+    public MotionPlanner(MotorController motor) {
+        this.motor = motor;
+        setPriority(NORM_PRIORITY);
+    }
+
+    public void run() {
+
+        while(true){
+
+            motor.accessMotor("Motion Planner");
+
+            try{
+                Thread.sleep(1000);
+            }catch(Exception e){}
+
+        }
+
+    }
+
+}
+public class MotorController {
+
+    private final int CEILING_PRIORITY = Thread.MAX_PRIORITY;
+
+    public synchronized void accessMotor(String threadName) {
+
+        Thread current = Thread.currentThread();
+        int originalPriority = current.getPriority();
+
+        System.out.println("\n-----------------------------------");
+        System.out.println(threadName + " entered MotorController");
+        System.out.println("Original Priority : " + originalPriority);
+
+        current.setPriority(CEILING_PRIORITY);
+
+        System.out.println("Priority ceiling applied to " + threadName);
+        System.out.println("Current Priority : " + current.getPriority());
+
+        try {
+            if (threadName.equals("Logger")) {
+                Thread.sleep(3000);
+            } else {
+                Thread.sleep(500);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        current.setPriority(originalPriority);
+
+        System.out.println(threadName + " priority restored to " + current.getPriority());
+        System.out.println(threadName + " exited MotorController");
+        System.out.println("-----------------------------------");
+    }
+}
+public class PerformanceTest {
+
+    public static void main(String[] args) {
+
+        System.out.println("===== PERFORMANCE COMPARISON =====\n");
+
+        System.out.println("Scenario 1 : Basic Synchronization");
+        runTest();
+
+        System.out.println("\nScenario 2 : Priority Inheritance");
+        runTest();
+
+        System.out.println("\nScenario 3 : Priority Ceiling");
+        runTest();
+    }
+
+    private static void runTest() {
+
+        long startTime = System.currentTimeMillis();
+
+        MotorController motor = new MotorController();
+
+        LoggerThread logger = new LoggerThread(motor);
+        SafetyMonitor safety = new SafetyMonitor(motor);
+        MotionPlanner motion = new MotionPlanner(motor);
+
+        logger.start();
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        safety.start();
+        motion.start();
+
+        try {
+            logger.join();
+            safety.join();
+            motion.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        long endTime = System.currentTimeMillis();
+
+        System.out.println("Execution Time : " + (endTime - startTime) + " ms");
+    }
+}
+public class SafetyMonitor extends Thread {
+
+    private MotorController motor;
+
+    public SafetyMonitor(MotorController motor) {
+        this.motor = motor;
+        setPriority(MAX_PRIORITY);
+    }
+
+    public void run() {
+
+        while(true) {
+
+            motor.accessMotor("Safety Monitor");
+
+            try {
+                Thread.sleep(1000);
+            } catch(Exception e){}
+
+        }
+
+    }
+
+}
