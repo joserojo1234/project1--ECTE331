@@ -1,0 +1,50 @@
+public class PerformanceTest {
+
+    public static void main(String[] args) {
+
+        System.out.println("===== PERFORMANCE COMPARISON =====\n");
+
+        System.out.println("Scenario 1 : Basic Synchronization");
+        runTest();
+
+        System.out.println("\nScenario 2 : Priority Inheritance");
+        runTest();
+
+        System.out.println("\nScenario 3 : Priority Ceiling");
+        runTest();
+    }
+
+    private static void runTest() {
+
+        long startTime = System.currentTimeMillis();
+
+        MotorController motor = new MotorController();
+
+        LoggerThread logger = new LoggerThread(motor);
+        SafetyMonitor safety = new SafetyMonitor(motor);
+        MotionPlanner motion = new MotionPlanner(motor);
+
+        logger.start();
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        safety.start();
+        motion.start();
+
+        try {
+            logger.join();
+            safety.join();
+            motion.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        long endTime = System.currentTimeMillis();
+
+        System.out.println("Execution Time : " + (endTime - startTime) + " ms");
+    }
+}
