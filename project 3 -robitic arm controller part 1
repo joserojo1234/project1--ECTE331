@@ -1,0 +1,115 @@
+
+public class LoggerThread extends Thread {
+
+    private MotorController motor;
+
+    public LoggerThread(MotorController motor){
+        this.motor = motor;
+        setPriority(MIN_PRIORITY);
+    }
+
+    public void run(){
+
+        for (int i = 0; i < 5; i++){
+
+            motor.accessMotor("Logger");
+
+            try{
+                Thread.sleep(1000);
+            }catch(Exception e){}
+
+        }
+
+    }
+public class Main {
+
+    public static void main(String[] args) {
+
+        MotorController motor = new MotorController();
+
+        SafetyMonitor safety = new SafetyMonitor(motor);
+        MotionPlanner motion = new MotionPlanner(motor);
+        LoggerThread logger = new LoggerThread(motor);
+
+        safety.start();
+        motion.start();
+        logger.start();
+
+    }
+
+}
+}
+
+
+public class MotionPlanner extends Thread {
+
+    private MotorController motor;
+
+    public MotionPlanner(MotorController motor) {
+        this.motor = motor;
+        setPriority(NORM_PRIORITY);
+    }
+
+    public void run() {
+
+        while(true){
+
+            motor.accessMotor("Motion Planner");
+
+            try{
+                Thread.sleep(1000);
+            }catch(Exception e){}
+
+        }
+
+    }
+
+}
+
+
+public class MotorController {
+
+    public void accessMotor(String threadName) {
+
+        System.out.println(
+            System.currentTimeMillis() +
+            " : " +
+            threadName +
+            " accessing motor");
+
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println(threadName + " finished.");
+    }
+}
+
+public class SafetyMonitor extends Thread {
+
+    private MotorController motor;
+
+    public SafetyMonitor(MotorController motor) {
+        this.motor = motor;
+        setPriority(MAX_PRIORITY);
+    }
+
+    public void run() {
+
+        while(true) {
+
+            motor.accessMotor("Safety Monitor");
+
+            try {
+                Thread.sleep(1000);
+            } catch(Exception e){}
+
+        }
+
+    }
+
+}
+
+
